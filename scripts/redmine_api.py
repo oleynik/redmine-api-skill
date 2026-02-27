@@ -71,7 +71,10 @@ def parse_query(items):
 
 
 def build_headers(args):
-    headers = {"Accept": "application/json"}
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": args.user_agent or os.getenv("REDMINE_USER_AGENT", "curl/8.7.1"),
+    }
 
     api_key = args.api_key or os.getenv("REDMINE_API_KEY")
     if api_key:
@@ -159,6 +162,10 @@ def main():
         help="Redmine base URL (required; may also be provided via REDMINE_BASE_URL)",
     )
     parser.add_argument("--api-key", help="Redmine API key (or use REDMINE_API_KEY)")
+    parser.add_argument(
+        "--user-agent",
+        help="User-Agent header (or use REDMINE_USER_AGENT). Default: curl/8.7.1",
+    )
     parser.add_argument("--cred-file", help="File containing username:password")
     parser.add_argument("--basic-user", help="Basic auth username (or REDMINE_USER)")
     parser.add_argument("--basic-password", help="Basic auth password (or REDMINE_PASSWORD)")

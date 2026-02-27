@@ -52,6 +52,7 @@ Common options:
 
 - `--base-url`: required unless `REDMINE_BASE_URL` is set
 - `--api-key`: API key (or `REDMINE_API_KEY`)
+- `--user-agent`: User-Agent header (or `REDMINE_USER_AGENT`, default `curl/8.7.1`)
 - `--cred-file`: file containing `username:password`
 - `--basic-user`, `--basic-password`: basic auth creds (or env vars)
 - `--query key=value`: repeatable query parameters
