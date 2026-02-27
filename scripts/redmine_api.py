@@ -20,6 +20,46 @@ import urllib.parse
 import urllib.request
 
 
+def load_dotenv(path=".env"):
+    def parse_value(raw):
+        raw = raw.strip()
+        if not raw:
+            return ""
+
+        if raw[0] in ('"', "'"):
+            quote = raw[0]
+            idx = 1
+            while idx < len(raw):
+                if raw[idx] == quote and raw[idx - 1] != "\\":
+                    return raw[1:idx].replace(f"\\{quote}", quote)
+                idx += 1
+            return raw[1:]
+
+        comment_idx = raw.find(" #")
+        if comment_idx != -1:
+            raw = raw[:comment_idx]
+        return raw.rstrip()
+
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            for raw_line in fh:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("export "):
+                    line = line[len("export ") :].strip()
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                if not key:
+                    continue
+                os.environ.setdefault(key, parse_value(value))
+    except FileNotFoundError:
+        return
+
+
 def parse_query(items):
     parsed = []
     for item in items:
@@ -105,6 +145,7 @@ def print_response(status, body):
 
 
 def main():
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Redmine REST API helper")
     parser.add_argument(
         "method",

@@ -17,21 +17,23 @@ Portable Redmine API skill and helper script for issue workflows, status transit
 
 ## Quick start
 
-1. Set your Redmine base URL:
+1. Create a local `.env` file (auto-loaded by `scripts/redmine_api.py`):
+
+```bash
+cat > .env <<'EOF'
+REDMINE_BASE_URL=https://redmine.example.com
+REDMINE_API_KEY=your_api_key
+# Optional for basic auth instead of API key:
+# REDMINE_USER=username
+# REDMINE_PASSWORD=password
+EOF
+```
+
+2. Alternative: export variables in your shell:
 
 ```bash
 export REDMINE_BASE_URL="https://redmine.example.com"
-```
-
-2. Choose one authentication method:
-
-```bash
-# Option A: API key (recommended)
 export REDMINE_API_KEY="your_api_key"
-
-# Option B: Basic auth via env vars
-export REDMINE_USER="username"
-export REDMINE_PASSWORD="password"
 ```
 
 3. Make a request:
@@ -92,5 +94,6 @@ python3 scripts/redmine_api.py POST /uploads.json \
 ## Notes
 
 - The script fails fast if base URL or authentication is missing.
+- A `.env` file in the current working directory is loaded automatically.
 - For write operations, follow a read-before-write and read-after-write verification pattern.
 - Redmine validation errors are typically returned as HTTP `422`.
