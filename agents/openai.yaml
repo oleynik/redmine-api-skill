@@ -1,0 +1,4 @@
+interface:
+  display_name: "Redmine API"
+  short_description: "Help with Redmine REST API workflows"
+  default_prompt: "Use Redmine REST API endpoints to complete the requested task safely."
