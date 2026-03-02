@@ -24,6 +24,7 @@ Source docs:
   - `401`: unauthorized
   - `404`: not found
   - `422`: validation errors
+- Text formatting setting (`text_formatting`) is **not** available via the REST API. The `/settings.json` endpoint requires admin privileges. Detect the active formatter by fetching an issue's HTML page and reading the `data-*-text-formatting-param` attribute on the textarea element. Use `python3 scripts/redmine_api.py detect-format` to automate this.
 
 ## Issue lifecycle
 

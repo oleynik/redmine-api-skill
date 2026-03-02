@@ -7,12 +7,14 @@ Examples:
   python3 scripts/redmine_api.py GET /issues/26.json --base-url https://redmine.example.com --query include=journals --cred-file redmine.cred
   python3 scripts/redmine_api.py PUT /issues/26.json --base-url https://redmine.example.com --data '{"issue":{"status_id":3}}' --api-key "$REDMINE_API_KEY"
   python3 scripts/redmine_api.py POST /uploads.json --base-url https://redmine.example.com --query filename=log.txt --binary-file ./log.txt --api-key "$REDMINE_API_KEY"
+  python3 scripts/redmine_api.py detect-format --base-url https://redmine.example.com --api-key "$REDMINE_API_KEY"
 """
 
 import argparse
 import base64
 import json
 import os
+import re
 import ssl
 import sys
 import urllib.error
@@ -147,8 +149,86 @@ def print_response(status, body):
         print(text)
 
 
+def _find_any_issue_id(base_url, headers, ssl_context, timeout):
+    """Fetch /issues.json?limit=1 and return the first issue ID, or None."""
+    url = make_url(base_url, "/issues.json", [("limit", "1")])
+    req = urllib.request.Request(url=url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, context=ssl_context, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+            issues = data.get("issues", [])
+            if issues:
+                return issues[0]["id"]
+    except (urllib.error.URLError, json.JSONDecodeError, KeyError):
+        pass
+    return None
+
+
+def _extract_format_from_html(base_url, issue_id, headers, ssl_context, timeout):
+    """Fetch an issue's HTML page and extract the text-formatting-param value."""
+    url = f"{base_url.rstrip('/')}/issues/{issue_id}"
+    html_headers = dict(headers)
+    html_headers["Accept"] = "text/html"
+    req = urllib.request.Request(url=url, headers=html_headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, context=ssl_context, timeout=timeout) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+            match = re.search(r'text-formatting-param="([^"]+)"', html)
+            if match:
+                return match.group(1)
+    except urllib.error.URLError:
+        pass
+    return "common_mark"
+
+
+def detect_format_cmd(argv):
+    """Detect the Redmine instance's text formatting engine."""
+    parser = argparse.ArgumentParser(
+        prog="redmine_api.py detect-format",
+        description="Detect Redmine text formatting engine",
+    )
+    parser.add_argument(
+        "--base-url",
+        default=os.getenv("REDMINE_BASE_URL"),
+        help="Redmine base URL (or REDMINE_BASE_URL)",
+    )
+    parser.add_argument("--api-key", help="Redmine API key (or REDMINE_API_KEY)")
+    parser.add_argument("--user-agent", help="User-Agent header (or REDMINE_USER_AGENT)")
+    parser.add_argument("--cred-file", help="File containing username:password")
+    parser.add_argument("--basic-user", help="Basic auth username (or REDMINE_USER)")
+    parser.add_argument("--basic-password", help="Basic auth password (or REDMINE_PASSWORD)")
+    parser.add_argument("--timeout", type=float, default=30.0, help="HTTP timeout in seconds")
+    parser.add_argument("--insecure", action="store_true", help="Disable TLS verification")
+    args = parser.parse_args(argv)
+
+    try:
+        if not args.base_url:
+            raise ValueError("Base URL is required. Pass --base-url or set REDMINE_BASE_URL.")
+        headers = build_headers(args)
+    except (OSError, ValueError) as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 2
+
+    ssl_context = None
+    if args.insecure:
+        ssl_context = ssl._create_unverified_context()  # noqa: SLF001
+
+    issue_id = _find_any_issue_id(args.base_url, headers, ssl_context, args.timeout)
+    if issue_id is None:
+        print("common_mark")
+        return 0
+
+    fmt = _extract_format_from_html(args.base_url, issue_id, headers, ssl_context, args.timeout)
+    print(fmt)
+    return 0
+
+
 def main():
     load_dotenv()
+
+    if len(sys.argv) > 1 and sys.argv[1] == "detect-format":
+        return detect_format_cmd(sys.argv[2:])
+
     parser = argparse.ArgumentParser(description="Redmine REST API helper")
     parser.add_argument(
         "method",
